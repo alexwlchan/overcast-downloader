@@ -18,12 +18,10 @@ import sys
 import xml.etree.ElementTree as ET
 
 try:
-    from urllib.error import HTTPError
     from urllib.parse import urlparse
     from urllib.request import urlretrieve
 except ImportError:  # Python 2.7
     from urllib import urlretrieve
-    from urllib2 import HTTPError
     from urlparse import urlparse
 
 
@@ -37,14 +35,14 @@ def parse_args(argv):
     )
 
     parser.add_argument(
-        "--out_dir", default="audiofiles", help="Directory to save audio files to"
+        "--download_dir", default="audiofiles", help="Directory to save audio files to"
     )
 
     args = parser.parse_args(argv)
 
     return {
         "opml_path": os.path.abspath(args.OPML_PATH),
-        "out_dir": os.path.abspath(args.out_dir),
+        "download_dir": os.path.abspath(args.download_dir),
     }
 
 
@@ -120,10 +118,10 @@ def mkdir_p(path):
             raise
 
 
-def download_episode(episode, out_dir):
+def download_episode(episode, download_dir):
     """
     Given a blob of episode data from get_episodes, download the MP3 file and
-    save the metadata to ``out_dir``.
+    save the metadata to ``download_dir``.
     """
     # If the MP3 URL is https://example.net/mypodcast/podcast1.mp3,
     # get the filename ``podcast1.mp3``.
@@ -131,9 +129,9 @@ def download_episode(episode, out_dir):
     url_path = urlparse(audio_url).path
     filename = os.path.basename(url_path)
 
-    # Within the out_dir, put the episodes for each podcast in the
+    # Within the download_dir, put the episodes for each podcast in the
     # same folder.
-    podcast_dir = os.path.join(out_dir, episode["podcast"]["title"].replace("/", "_"))
+    podcast_dir = os.path.join(download_dir, episode["podcast"]["title"].replace("/", "_"))
     mkdir_p(podcast_dir)
 
     # Download the podcast audio file if it hasn't already been downloaded.
@@ -145,7 +143,7 @@ def download_episode(episode, out_dir):
         print("*** Downloading %s" % audio_url)
         try:
             tmp_path, _ = urlretrieve(audio_url)
-        except HTTPError as err:
+        except Exception as err:
             print("*** Error downloading audio file: %s" % err)
         else:
             print("*** Download successful!")
@@ -167,7 +165,7 @@ if __name__ == "__main__":
     args = parse_args(argv=sys.argv[1:])
 
     opml_path = args["opml_path"]
-    out_dir = args["out_dir"]
+    download_dir = args["download_dir"]
 
     try:
         with open(opml_path) as infile:
@@ -179,4 +177,4 @@ if __name__ == "__main__":
             raise
 
     for episode in get_episodes(xml_string):
-        download_episode(episode=episode, out_dir=out_dir)
+        download_episode(episode=episode, download_dir=download_dir)
