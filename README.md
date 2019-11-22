@@ -64,7 +64,7 @@ Steps:
     $ python download_overcast_podcasts.py ~/Downloads/overcast.opml.xml
     ```
 
-    This will start downloading the audiofiles to a folder called `audiofiles`.
+    This will start downloading the audio files to a folder called `audiofiles`.
     If you'd like to save them somewhere different, pass the `--download_dir` flag.
     For example, if you wanted to save the files to `~/Documents/podcasts`, run:
 
