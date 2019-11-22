@@ -1,6 +1,6 @@
 # overcast-downloader
 
-This is a script that lets you download audio files for every podcast you've listened to in Overcast.
+This is a script that lets you download the audio files for every podcast you've listened to in Overcast.
 
 I listen to a lot of podcasts, and I use [Overcast].
 Sometimes I want to listen to a podcast I heard a long time ago, but links rot, websites break, and episodes go offline.
