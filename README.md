@@ -31,35 +31,46 @@ I went digging, and it was exactly what I wanted -- and shortly after, I had a s
 
 
 
-## Usage
+## How to use this script
 
-You need to add an email and password to your account in the Overcast iOS app.
-If you haven't done this before, or you've forgotten your email/password, read [my instructions](add_email_password) for doing so.
+You need:
 
-You need somewhere you can run Python scripts.
-Any recent version of Python should be fine, both 2.7 and 3.x.
-(For example, the system Python in macOS, or Pythonista on iOS.)
+*   **An Overcast account with an email and password.**
+    You can create this in the Overcast iOS app.
+    If you haven't done this before, or you've forgotten your email/password, read [my instructions](add_email_password) for doing so.
 
-Log in to the Overcast website at <https://overcast.fm/login> using your email address and password.
+*   **Somewhere where you can run Python scripts.**
+    The script should run with any recent version of Python (both 2.7 and 3.x), without any third-party packages.
+    For example, the system Python in macOS, or Pythonista on iOS.
 
-Once you're logged in, navigate to <https://overcast.fm/account>.
-Under "Export Your Data", click "All data".
-This will download an OPML file.
+Steps:
 
-Download the Python script `download_overcast_podcasts.py`, then run the script, passing the path to your OPML file as the first argument.
-For example, if the OPML file is in `~/Downloads/overcast.opml.xml`, run:
+1.  **Get your Overcast OPML file.**
 
-```console
-$ python download_overcast_podcasts.py ~/Downloads/overcast.opml.xml
-```
+    Log in to the Overcast website at <https://overcast.fm/login> using your email address and password.
 
-This will start downloading the audiofiles to a folder called `audiofiles`.
-If you'd like to save them somewhere different, pass the `--download_dir` flag.
-For example, if you wanted to save the files to `~/Documents/podcasts`, run:
+    Once you're logged in, navigate to <https://overcast.fm/account>.
+    Under "Export Your Data", click "All data".
+    This will download an OPML file, which includes a list of every podcast episode you've ever played.
 
-```console
-$ python download_overcast_podcasts.py ~/Downloads/overcast.opml.xml --out_dir ~/Documents/podcasts
-```
+2.  **Download the Python script.**
+
+    Download the script [`download_overcast_podcasts.py`](download_overcast_podcasts.py), and save it somewhere on your disk.
+
+3.  **Run the script, passing the path to your OPML file as the first argument.**
+    For example, if the OPML file is in `~/Downloads/overcast.opml.xml`, run:
+
+    ```console
+    $ python download_overcast_podcasts.py ~/Downloads/overcast.opml.xml
+    ```
+
+    This will start downloading the audiofiles to a folder called `audiofiles`.
+    If you'd like to save them somewhere different, pass the `--download_dir` flag.
+    For example, if you wanted to save the files to `~/Documents/podcasts`, run:
+
+    ```console
+    $ python download_overcast_podcasts.py ~/Downloads/overcast.opml.xml --out_dir ~/Documents/podcasts
+    ```
 
 The initial download will be very slow, depending on how many podcasts you've listened to, and it uses a lot of disk space.
 (At time of writing, I have 1189 episodes in my export.)
