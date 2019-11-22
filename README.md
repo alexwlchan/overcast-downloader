@@ -4,7 +4,7 @@ This is a script that lets you download audio files for every podcast you've lis
 
 I listen to a lot of podcasts, and I use [Overcast].
 Sometimes I want to listen to a podcast I heard a long time ago, but links rot, websites break, and episodes go offline.
-This script allows me to download the audio file of every episode I've listened to, so I always have a copy I can refer to.
+This script allows me to download the audio file of every episode I've listened to, so I have a local archive of podcast episodes.
 
 [Overcast]: https://overcast.fm/
 
