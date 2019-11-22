@@ -10,10 +10,7 @@ This script allows me to download the audio file of every episode I've listened 
 
 ![An old man sitting on a chair outdoors, listening to a record player.](record_player.jpg)
 
-<sup>
-  Podcasts sound better when you listen to them on vinyl.
-  Image credit: <a href="https://wellcomecollection.org/works/n7cthawx">Wellcome Collection</a>. CC BY.
-</sup>
+*Podcasts have a richer sound when you listen to them on vinyl. Image credit: <a href="https://wellcomecollection.org/works/n7cthawx">Wellcome Collection</a>. CC BY.*
 
 
 
