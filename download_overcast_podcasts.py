@@ -136,7 +136,25 @@ def download_episode(episode, download_dir):
 
     # Download the podcast audio file if it hasn't already been downloaded.
     download_path = os.path.join(podcast_dir, filename)
+    json_path = download_path + ".json"
 
+    # If the MP3 file already exists, check to see if it's the same episode,
+    # or if this podcast isn't using unique filenames.
+    #
+    # If a podcast has multiple episodes with the same filename in its feed,
+    # append the Overcast ID to disambiguate.
+    if os.path.exists(download_path):
+        cached_metadata = json.load(open(json_path))
+
+        cached_overcast_id = cached_metadata["episode"]["overcast_id"]
+        this_overcase_id = episode["episode"]["overcast_id"]
+
+        if cached_overcast_id != this_overcase_id:
+            filename = filename.replace(".mp3", "_%s.mp3" % this_overcase_id)
+            download_path = os.path.join(podcast_dir, filename)
+            json_path = download_path + ".json"
+
+    # Download the MP3 file for the episode, if it hasn't been downloaded already.
     if os.path.exists(download_path):
         print("*** Already downloaded %s, skipping" % audio_url)
     else:
@@ -155,7 +173,6 @@ def download_episode(episode, download_dir):
         episode["filename"] = filename
 
     json_string = json.dumps(episode, indent=2, sort_keys=True)
-    json_path = download_path + ".json"
 
     with open(json_path, "w") as outfile:
         outfile.write(json_string)
