@@ -4,7 +4,7 @@
 Download podcast files based on your Overcast export.
 
 If you have an Overcast account, you can download an OPML file with
-a list of every episode you've played from https://overcast.fm/account
+a list of every episode you've played from https://overcast.fm/account.
 
 This tool can read that OPML file, and save a local copy of the audio files
 for every episode you've listened to.
@@ -19,9 +19,10 @@ import xml.etree.ElementTree as ET
 
 try:
     from urllib.parse import urlparse
-    from urllib.request import urlretrieve
+    from urllib.request import build_opener, install_opener, urlretrieve
 except ImportError:  # Python 2.7
     from urllib import urlretrieve
+    from urllib2 import build_opener, install_opener
     from urlparse import urlparse
 
 
@@ -35,7 +36,17 @@ def parse_args(argv):
     )
 
     parser.add_argument(
-        "--download_dir", default="audiofiles", help="Directory to save audio files to"
+        "--download_dir", default="audiofiles",
+        help="directory to save podcast information to to"
+    )
+
+    parser.add_argument(
+        "--user_agent", default="Python-urllib/%d.%d" % sys.version_info[:2],
+        help="""
+        user-agent to send in requests.  Some sites return a 403 Error if you try
+        to download files with urllib.  You could use (for example) 'Mozilla/5.0',
+        which might get files which otherwise fail to download.
+        """
     )
 
     args = parser.parse_args(argv)
@@ -43,6 +54,7 @@ def parse_args(argv):
     return {
         "opml_path": os.path.abspath(args.OPML_PATH),
         "download_dir": os.path.abspath(args.download_dir),
+        "user_agent": args.user_agent,
     }
 
 
@@ -183,6 +195,12 @@ if __name__ == "__main__":
 
     opml_path = args["opml_path"]
     download_dir = args["download_dir"]
+
+    # Some sites block the default urllib User-Agent headers, so we can customise
+    # it to something else if necessary.
+    opener = build_opener()
+    opener.addheaders = [("User-agent", args["user_agent"])]
+    install_opener(opener)
 
     try:
         with open(opml_path) as infile:
