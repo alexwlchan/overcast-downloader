@@ -39,9 +39,13 @@ You need:
     You can create this in the Overcast iOS app.
     If you haven't done this before, or you've forgotten your email/password, read [my instructions](add_email_password) for doing so.
 
-*   **Somewhere where you can run Python scripts.**
-    The script should run with any recent version of Python (both 2.7 and 3.x), without any third-party packages.
-    For example, the system Python in macOS, or Pythonista on iOS.
+*   **A working Python 3 installation.**
+    This script only works with Python 3.
+    You need to install dependencies with pip:
+
+    ```console
+    $ pip3 install -r requirements.txt
+    ```
 
 Steps:
 

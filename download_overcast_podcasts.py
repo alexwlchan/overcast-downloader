@@ -12,18 +12,20 @@ for every episode you've listened to.
 
 import argparse
 import errno
+import logging
 import json
 import os
 import sys
+from urllib.parse import urlparse
+from urllib.request import build_opener, install_opener, urlretrieve
 import xml.etree.ElementTree as ET
 
-try:
-    from urllib.parse import urlparse
-    from urllib.request import build_opener, install_opener, urlretrieve
-except ImportError:  # Python 2.7
-    from urllib import urlretrieve
-    from urllib2 import build_opener, install_opener
-    from urlparse import urlparse
+import daiquiri
+
+
+daiquiri.setup(level=logging.INFO)
+
+logger = daiquiri.getLogger(__name__)
 
 
 def parse_args(argv):
@@ -177,15 +179,17 @@ def download_episode(episode, download_dir):
 
     # Download the MP3 file for the episode, if it hasn't been downloaded already.
     if os.path.exists(download_path):
-        print("*** Already downloaded %s, skipping" % audio_url)
+        logger.debug("Already downloaded %s, skipping", audio_url)
     else:
-        print("*** Downloading %s" % audio_url)
+        logger.info(
+            "Downloading %s: %s to %s", episode["podcast"]["title"], audio_url, filename
+        )
         try:
             tmp_path, _ = urlretrieve(audio_url)
         except Exception as err:
-            print("*** Error downloading audio file: %s" % err)
+            logger.error("Error downloading audio file: %s", err)
         else:
-            print("*** Download successful!")
+            logger.info("Download successful!")
             os.rename(tmp_path, download_path)
 
     # Save a blob of JSON with some episode metadata
