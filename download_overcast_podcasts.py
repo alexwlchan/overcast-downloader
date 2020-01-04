@@ -11,6 +11,7 @@ for every episode you've listened to.
 """
 
 import argparse
+import datetime
 import errno
 import logging
 import json
@@ -180,6 +181,7 @@ def download_episode(episode, download_dir):
     # Download the MP3 file for the episode, if it hasn't been downloaded already.
     if os.path.exists(download_path):
         logger.debug("Already downloaded %s, skipping", audio_url)
+        return
     else:
         logger.info(
             "Downloading %s: %s to %s", episode["podcast"]["title"], audio_url, filename
@@ -199,6 +201,28 @@ def download_episode(episode, download_dir):
 
     with open(json_path, "w") as outfile:
         outfile.write(json_string)
+
+    save_rss_feed(episode=episode, download_dir=download_dir)
+
+
+def save_rss_feed(*, episode, download_dir):
+    podcast_dir = os.path.join(download_dir, _escape(episode["podcast"]["title"]))
+
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+
+    rss_path = os.path.join(podcast_dir, f"feed.{today}.xml")
+
+    if os.path.exists(rss_path):
+        return
+
+    logger.info("Downloading RSS feed for %s", episode["podcast"]["title"])
+    try:
+        tmp_path, _ = urlretrieve(episode["podcast"]["xml_url"])
+    except Exception as err:
+        logger.error("Error downloading RSS feed: %s", err)
+    else:
+        logger.info("Downloaded RSS successfully!")
+        os.rename(tmp_path, rss_path)
 
 
 if __name__ == "__main__":
