@@ -130,25 +130,34 @@ def mkdir_p(path):
             raise
 
 
+def _escape(s):
+    return s.replace(":", "-").replace("/", "-")
+
+
 def download_episode(episode, download_dir):
     """
     Given a blob of episode data from get_episodes, download the MP3 file and
     save the metadata to ``download_dir``.
     """
-    # If the MP3 URL is https://example.net/mypodcast/podcast1.mp3,
-    # get the filename ``podcast1.mp3``.
+    # If the MP3 URL is https://example.net/mypodcast/podcast1.mp3 and the
+    # title is "Episode 1: My Great Podcast", the filename is
+    # ``Episode 1- My Great Podcast.mp3``.
     audio_url = episode["episode"]["enclosure_url"]
     url_path = urlparse(audio_url).path
-    filename = os.path.basename(url_path)
+
+    extension = os.path.splitext(url_path)[-1]
+    base_name = _escape(episode["episode"]["title"])
+
+    filename = base_name + extension
 
     # Within the download_dir, put the episodes for each podcast in the
     # same folder.
-    podcast_dir = os.path.join(download_dir, episode["podcast"]["title"].replace("/", "_"))
+    podcast_dir = os.path.join(download_dir, _escape(episode["podcast"]["title"]))
     mkdir_p(podcast_dir)
 
     # Download the podcast audio file if it hasn't already been downloaded.
     download_path = os.path.join(podcast_dir, filename)
-    json_path = download_path + ".json"
+    json_path = os.path.join(podcast_dir, base_name + ".json")
 
     # If the MP3 file already exists, check to see if it's the same episode,
     # or if this podcast isn't using unique filenames.
@@ -178,11 +187,9 @@ def download_episode(episode, download_dir):
         else:
             print("*** Download successful!")
             os.rename(tmp_path, download_path)
-            filename = None
 
     # Save a blob of JSON with some episode metadata
-    if filename is not None:
-        episode["filename"] = filename
+    episode["filename"] = filename
 
     json_string = json.dumps(episode, indent=2, sort_keys=True)
 
