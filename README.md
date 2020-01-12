@@ -77,7 +77,7 @@ Steps:
     ```
 
 The initial download will be very slow, depending on how many podcasts you've listened to, and it uses a lot of disk space.
-(At time of writing, I have ~2500 episodes in my export, which take up 61 GB.)
+(At time of writing, I have ~1200 episodes in my export, which take up 61 GB.)
 On subsequent runs, the script should only download files that it hasn't saved before, so it should be a lot faster.
 
 
