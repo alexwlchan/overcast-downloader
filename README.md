@@ -40,7 +40,7 @@ You need:
     If you haven't done this before, or you've forgotten your email/password, read [my instructions](add_email_password) for doing so.
 
 *   **A working Python 3 installation.**
-    This script only works with Python 3.
+    This script only works with Python 3.6 or later.
     You need to install dependencies with pip:
 
     ```console

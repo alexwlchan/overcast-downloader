@@ -39,17 +39,9 @@ def parse_args(argv):
     )
 
     parser.add_argument(
-        "--download_dir", default="audiofiles",
-        help="directory to save podcast information to to"
-    )
-
-    parser.add_argument(
-        "--user_agent", default="Python-urllib/%d.%d" % sys.version_info[:2],
-        help="""
-        user-agent to send in requests.  Some sites return a 403 Error if you try
-        to download files with urllib.  You could use (for example) 'Mozilla/5.0',
-        which might get files which otherwise fail to download.
-        """
+        "--download_dir",
+        default="audiofiles",
+        help="directory to save podcast information to to",
     )
 
     args = parser.parse_args(argv)
@@ -57,7 +49,6 @@ def parse_args(argv):
     return {
         "opml_path": os.path.abspath(args.OPML_PATH),
         "download_dir": os.path.abspath(args.download_dir),
-        "user_agent": args.user_agent,
     }
 
 
@@ -137,6 +128,31 @@ def _escape(s):
     return s.replace(":", "-").replace("/", "-")
 
 
+def get_filename(*, download_url, title):
+    url_path = urlparse(download_url).path
+
+    extension = os.path.splitext(url_path)[-1]
+    base_name = _escape(title)
+
+    return base_name + extension
+
+
+def download_url(*, url, path, description):
+    # Some sites block the default urllib User-Agent headers, so we can customise
+    # it to something else if necessary.
+    opener = build_opener()
+    opener.addheaders = [("User-agent", "Mozilla/5.0")]
+    install_opener(opener)
+
+    try:
+        tmp_path, _ = urlretrieve(url)
+    except Exception as err:
+        logger.error(f"Error downloading {description}: {err}")
+    else:
+        logger.info(f"Downloading {description} successful!")
+        os.rename(tmp_path, path)
+
+
 def download_episode(episode, download_dir):
     """
     Given a blob of episode data from get_episodes, download the MP3 file and
@@ -146,16 +162,12 @@ def download_episode(episode, download_dir):
     # title is "Episode 1: My Great Podcast", the filename is
     # ``Episode 1- My Great Podcast.mp3``.
     audio_url = episode["episode"]["enclosure_url"]
-    url_path = urlparse(audio_url).path
 
-    extension = os.path.splitext(url_path)[-1]
-    base_name = _escape(episode["episode"]["title"])
-
-    filename = base_name + extension
+    filename = get_filename(download_url=audio_url, title=episode["episode"]["title"])
 
     # Within the download_dir, put the episodes for each podcast in the
     # same folder.
-    podcast_dir = os.path.join(download_dir, _escape(episode["podcast"]["title"]))
+    podcast_dir = os.path.join(download_dir, escape(episode["podcast"]["title"]))
     mkdir_p(podcast_dir)
 
     # Download the podcast audio file if it hasn't already been downloaded.
@@ -186,13 +198,7 @@ def download_episode(episode, download_dir):
         logger.info(
             "Downloading %s: %s to %s", episode["podcast"]["title"], audio_url, filename
         )
-        try:
-            tmp_path, _ = urlretrieve(audio_url)
-        except Exception as err:
-            logger.error("Error downloading audio file: %s", err)
-        else:
-            logger.info("Download successful!")
-            os.rename(tmp_path, download_path)
+        download_url(url=audio_url, path=download_path, description="MP3 file")
 
     # Save a blob of JSON with some episode metadata
     episode["filename"] = filename
@@ -206,7 +212,7 @@ def download_episode(episode, download_dir):
 
 
 def save_rss_feed(*, episode, download_dir):
-    podcast_dir = os.path.join(download_dir, _escape(episode["podcast"]["title"]))
+    podcast_dir = os.path.join(download_dir, escape(episode["podcast"]["title"]))
 
     today = datetime.datetime.now().strftime("%Y-%m-%d")
 
@@ -216,13 +222,9 @@ def save_rss_feed(*, episode, download_dir):
         return
 
     logger.info("Downloading RSS feed for %s", episode["podcast"]["title"])
-    try:
-        tmp_path, _ = urlretrieve(episode["podcast"]["xml_url"])
-    except Exception as err:
-        logger.error("Error downloading RSS feed: %s", err)
-    else:
-        logger.info("Downloaded RSS successfully!")
-        os.rename(tmp_path, rss_path)
+    download_url(
+        url=episode["podcast"]["xml_url"], path=rss_path, description="RSS feed"
+    )
 
 
 if __name__ == "__main__":
@@ -230,12 +232,6 @@ if __name__ == "__main__":
 
     opml_path = args["opml_path"]
     download_dir = args["download_dir"]
-
-    # Some sites block the default urllib User-Agent headers, so we can customise
-    # it to something else if necessary.
-    opener = build_opener()
-    opener.addheaders = [("User-agent", args["user_agent"])]
-    install_opener(opener)
 
     try:
         with open(opml_path) as infile:
