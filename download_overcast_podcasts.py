@@ -167,11 +167,12 @@ def download_episode(episode, download_dir):
 
     # Within the download_dir, put the episodes for each podcast in the
     # same folder.
-    podcast_dir = os.path.join(download_dir, escape(episode["podcast"]["title"]))
+    podcast_dir = os.path.join(download_dir, _escape(episode["podcast"]["title"]))
     mkdir_p(podcast_dir)
 
     # Download the podcast audio file if it hasn't already been downloaded.
     download_path = os.path.join(podcast_dir, filename)
+    base_name = _escape(episode["episode"]["title"])
     json_path = os.path.join(podcast_dir, base_name + ".json")
 
     # If the MP3 file already exists, check to see if it's the same episode,
@@ -212,7 +213,7 @@ def download_episode(episode, download_dir):
 
 
 def save_rss_feed(*, episode, download_dir):
-    podcast_dir = os.path.join(download_dir, escape(episode["podcast"]["title"]))
+    podcast_dir = os.path.join(download_dir, _escape(episode["podcast"]["title"]))
 
     today = datetime.datetime.now().strftime("%Y-%m-%d")
 
