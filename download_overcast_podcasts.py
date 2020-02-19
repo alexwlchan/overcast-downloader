@@ -201,7 +201,7 @@ def download_episode(episode, download_dir):
         logger.info(
             "Downloading %s: %s to %s", episode["podcast"]["title"], audio_url, filename
         )
-        download_url(url=audio_url, path=download_path, description="MP3 file")
+        download_url(url=audio_url, path=download_path, description=audio_url)
 
     # Save a blob of JSON with some episode metadata
     episode["filename"] = filename
@@ -226,7 +226,9 @@ def save_rss_feed(*, episode, download_dir):
 
     logger.info("Downloading RSS feed for %s", episode["podcast"]["title"])
     download_url(
-        url=episode["podcast"]["xml_url"], path=rss_path, description="RSS feed"
+        url=episode["podcast"]["xml_url"],
+        path=rss_path,
+        description="RSS feed for %s" % episode["podcast"]["title"],
     )
 
 
