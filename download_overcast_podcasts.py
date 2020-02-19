@@ -11,8 +11,10 @@ for every episode you've listened to.
 """
 
 import argparse
+import concurrent.futures
 import datetime
 import errno
+import itertools
 import logging
 import json
 import os
@@ -243,5 +245,24 @@ if __name__ == "__main__":
         else:
             raise
 
-    for episode in get_episodes(xml_string):
-        download_episode(episode=episode, download_dir=download_dir)
+    episodes = get_episodes(xml_string)
+    max_parallel_downloads = 5
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {
+            executor.submit(download_episode, ep, download_dir=download_dir)
+            for ep in itertools.islice(episodes, max_parallel_downloads)
+        }
+
+        while futures:
+            done, futures = concurrent.futures.wait(
+                futures, return_when=concurrent.futures.FIRST_COMPLETED
+            )
+
+            for fut in done:
+                fut.result()
+
+            for ep in itertools.islice(episodes, len(done)):
+                futures.add(
+                    executor.submit(download_episode, ep, download_dir=download_dir)
+                )
