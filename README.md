@@ -41,11 +41,6 @@ You need:
 
 *   **A working Python 3 installation.**
     This script only works with Python 3.6 or later.
-    You need to install dependencies with pip:
-
-    ```console
-    $ pip3 install -r requirements.txt
-    ```
 
 Steps:
 

@@ -11,24 +11,19 @@ for every episode you've listened to.
 """
 
 import argparse
-import concurrent.futures
 import datetime
 import errno
+import filecmp
+import functools
+import glob
 import itertools
-import logging
 import json
 import os
+import sqlite3
 import sys
 from urllib.parse import urlparse
 from urllib.request import build_opener, install_opener, urlretrieve
 import xml.etree.ElementTree as ET
-
-import daiquiri
-
-
-daiquiri.setup(level=logging.INFO)
-
-logger = daiquiri.getLogger(__name__)
 
 
 def parse_args(argv):
@@ -115,15 +110,49 @@ def get_episodes(xml_string):
             }
 
 
-def mkdir_p(path):
-    """Create a directory if it doesn't already exist."""
+def has_episode_been_downloaded_already(episode, download_dir):
     try:
-        os.makedirs(path)
-    except OSError as err:
-        if err.errno == errno.EEXIST:
+        conn = sqlite3.connect(os.path.join(download_dir, "overcast.db"))
+    except sqlite3.OperationalError as err:
+        if err.args[0] == "unable to open database file":
+            return False
+        else:
+            raise
+
+    c = conn.cursor()
+
+    try:
+        c.execute(
+            "SELECT * FROM downloaded_episodes WHERE overcast_id=?",
+            (episode["episode"]["overcast_id"],),
+        )
+    except sqlite3.OperationalError as err:
+        if err.args[0] == "no such table: downloaded_episodes":
+            return False
+        else:
+            raise
+
+    return c.fetchone() is not None
+
+
+def mark_episode_as_downloaded(episode, download_dir):
+    conn = sqlite3.connect(os.path.join(download_dir, "overcast.db"))
+    c = conn.cursor()
+
+    try:
+        c.execute("CREATE TABLE downloaded_episodes (overcast_id text PRIMARY KEY)")
+    except sqlite3.OperationalError as err:
+        if err.args[0] == "table downloaded_episodes already exists":
             pass
         else:
             raise
+
+    c.execute(
+        "INSERT INTO downloaded_episodes VALUES (?)",
+        (episode["episode"]["overcast_id"],),
+    )
+    conn.commit()
+    conn.close()
 
 
 def _escape(s):
@@ -149,9 +178,9 @@ def download_url(*, url, path, description):
     try:
         tmp_path, _ = urlretrieve(url)
     except Exception as err:
-        logger.error(f"Error downloading {description}: {err}")
+        print(f"Error downloading {description}: {err}")
     else:
-        logger.info(f"Downloading {description} successful!")
+        print(f"Downloading {description} successful!")
         os.rename(tmp_path, path)
 
 
@@ -160,6 +189,9 @@ def download_episode(episode, download_dir):
     Given a blob of episode data from get_episodes, download the MP3 file and
     save the metadata to ``download_dir``.
     """
+    if has_episode_been_downloaded_already(episode=episode, download_dir=download_dir):
+        return
+
     # If the MP3 URL is https://example.net/mypodcast/podcast1.mp3 and the
     # title is "Episode 1: My Great Podcast", the filename is
     # ``Episode 1- My Great Podcast.mp3``.
@@ -170,7 +202,7 @@ def download_episode(episode, download_dir):
     # Within the download_dir, put the episodes for each podcast in the
     # same folder.
     podcast_dir = os.path.join(download_dir, _escape(episode["podcast"]["title"]))
-    mkdir_p(podcast_dir)
+    os.makedirs(podcast_dir, exist_ok=True)
 
     # Download the podcast audio file if it hasn't already been downloaded.
     download_path = os.path.join(podcast_dir, filename)
@@ -183,23 +215,47 @@ def download_episode(episode, download_dir):
     # If a podcast has multiple episodes with the same filename in its feed,
     # append the Overcast ID to disambiguate.
     if os.path.exists(download_path):
-        cached_metadata = json.load(open(json_path))
+        try:
+            cached_metadata = json.load(open(json_path, "r"))
+        except Exception as err:
+            print(err, json_path)
+            raise
 
         cached_overcast_id = cached_metadata["episode"]["overcast_id"]
-        this_overcase_id = episode["episode"]["overcast_id"]
+        this_overcast_id = episode["episode"]["overcast_id"]
 
-        if cached_overcast_id != this_overcase_id:
-            filename = filename.replace(".mp3", "_%s.mp3" % this_overcase_id)
+        if cached_overcast_id != this_overcast_id:
+            filename = filename.replace(".mp3", "_%s.mp3" % this_overcast_id)
+            old_download_path = download_path
             download_path = os.path.join(podcast_dir, filename)
             json_path = download_path + ".json"
 
-    # Download the MP3 file for the episode, if it hasn't been downloaded already.
-    if os.path.exists(download_path):
-        logger.debug("Already downloaded %s, skipping", audio_url)
-        return
+            print(
+                "Downloading %s: %s to %s"
+                % (episode["podcast"]["title"], audio_url, filename)
+            )
+            download_url(url=audio_url, path=download_path, description=audio_url)
+
+            try:
+                if filecmp.cmp(download_path, old_download_path, shallow=False):
+                    print("Duplicates detected! %s" % download_path)
+                    os.unlink(download_path)
+                    download_path = old_download_path
+            except FileNotFoundError:
+                # This can occur if the download fails -- say, the episode is
+                # in the Overcast catalogue, but no longer available from source.
+                pass
+
+        else:
+            # Already downloaded and it's the same episode.
+            pass
+
+    # This episode has never been downloaded before, so we definitely have
+    # to download it fresh.
     else:
-        logger.info(
-            "Downloading %s: %s to %s", episode["podcast"]["title"], audio_url, filename
+        print(
+            "Downloading %s: %s to %s"
+            % (episode["podcast"]["title"], audio_url, filename)
         )
         download_url(url=audio_url, path=download_path, description=audio_url)
 
@@ -212,24 +268,42 @@ def download_episode(episode, download_dir):
         outfile.write(json_string)
 
     save_rss_feed(episode=episode, download_dir=download_dir)
+    mark_episode_as_downloaded(episode=episode, download_dir=download_dir)
 
 
 def save_rss_feed(*, episode, download_dir):
-    podcast_dir = os.path.join(download_dir, _escape(episode["podcast"]["title"]))
+    _save_rss_feed(
+        title=episode["podcast"]["title"],
+        xml_url=episode["podcast"]["xml_url"],
+        download_dir=download_dir
+    )
+
+
+# Use caching so we only have to download this RSS feed once.
+@functools.lru_cache()
+def _save_rss_feed(*, title, xml_url, download_dir):
+    podcast_dir = os.path.join(download_dir, _escape(title))
 
     today = datetime.datetime.now().strftime("%Y-%m-%d")
 
     rss_path = os.path.join(podcast_dir, f"feed.{today}.xml")
 
-    if os.path.exists(rss_path):
-        return
+    if not os.path.exists(rss_path):
+        print("Downloading RSS feed for %s" % title)
+        download_url(
+            url=xml_url,
+            path=rss_path,
+            description="RSS feed for %s" % title,
+        )
 
-    logger.info("Downloading RSS feed for %s", episode["podcast"]["title"])
-    download_url(
-        url=episode["podcast"]["xml_url"],
-        path=rss_path,
-        description="RSS feed for %s" % episode["podcast"]["title"],
-    )
+    matching_feeds = sorted(glob.glob(os.path.join(podcast_dir, "feed.*.xml")))
+
+    while (
+        len(matching_feeds) >= 2 and
+        filecmp.cmp(matching_feeds[-2], matching_feeds[-1], shallow=False)
+    ):
+        os.unlink(matching_feeds[-1])
+        matching_feeds.remove(matching_feeds[-1])
 
 
 if __name__ == "__main__":
@@ -247,24 +321,5 @@ if __name__ == "__main__":
         else:
             raise
 
-    episodes = get_episodes(xml_string)
-    max_parallel_downloads = 5
-
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {
-            executor.submit(download_episode, ep, download_dir=download_dir)
-            for ep in itertools.islice(episodes, max_parallel_downloads)
-        }
-
-        while futures:
-            done, futures = concurrent.futures.wait(
-                futures, return_when=concurrent.futures.FIRST_COMPLETED
-            )
-
-            for fut in done:
-                fut.result()
-
-            for ep in itertools.islice(episodes, len(done)):
-                futures.add(
-                    executor.submit(download_episode, ep, download_dir=download_dir)
-                )
+    for episode in get_episodes(xml_string):
+        download_episode(episode, download_dir=download_dir)
