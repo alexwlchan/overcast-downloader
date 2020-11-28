@@ -19,6 +19,7 @@ import glob
 import itertools
 import json
 import os
+import shutil
 import sqlite3
 import sys
 from urllib.parse import urlparse
@@ -181,7 +182,13 @@ def download_url(*, url, path, description):
         print(f"Error downloading {description}: {err}")
     else:
         print(f"Downloading {description} successful!")
-        os.rename(tmp_path, path)
+        try:
+            os.rename(local_filename, out_path)
+        except OSError as err:
+            if err.errno == errno.EXDEV:
+                shutil.move(local_filename, out_path)
+            else:
+                raise
 
 
 def download_episode(episode, download_dir):
