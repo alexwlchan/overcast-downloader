@@ -183,10 +183,10 @@ def download_url(*, url, path, description):
     else:
         print(f"Downloading {description} successful!")
         try:
-            os.rename(local_filename, out_path)
+            os.rename(tmp_path, path)
         except OSError as err:
             if err.errno == errno.EXDEV:
-                shutil.move(local_filename, out_path)
+                shutil.move(tmp_path, path)
             else:
                 raise
 
