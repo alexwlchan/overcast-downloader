@@ -16,15 +16,14 @@ import errno
 import filecmp
 import functools
 import glob
-import itertools
 import json
 import os
-import shutil
 import sqlite3
 import sys
 from urllib.parse import urlparse
-from urllib.request import build_opener, install_opener, urlretrieve
 import xml.etree.ElementTree as ET
+
+from download import download_file
 
 
 def parse_args(argv):
@@ -169,28 +168,6 @@ def get_filename(*, download_url, title):
     return base_name + extension
 
 
-def download_url(*, url, path, description):
-    # Some sites block the default urllib User-Agent headers, so we can customise
-    # it to something else if necessary.
-    opener = build_opener()
-    opener.addheaders = [("User-agent", "Mozilla/5.0")]
-    install_opener(opener)
-
-    try:
-        tmp_path, _ = urlretrieve(url)
-    except Exception as err:
-        print(f"Error downloading {description}: {err}")
-    else:
-        print(f"Downloading {description} successful!")
-        try:
-            os.rename(tmp_path, path)
-        except OSError as err:
-            if err.errno == errno.EXDEV:
-                shutil.move(tmp_path, path)
-            else:
-                raise
-
-
 def download_episode(episode, download_dir):
     """
     Given a blob of episode data from get_episodes, download the MP3 file and
@@ -226,7 +203,7 @@ def download_episode(episode, download_dir):
             cached_metadata = json.load(open(json_path, "r"))
         except Exception as err:
             print(err, json_path)
-            raise
+            return
 
         cached_overcast_id = cached_metadata["episode"]["overcast_id"]
         this_overcast_id = episode["episode"]["overcast_id"]
@@ -241,7 +218,7 @@ def download_episode(episode, download_dir):
                 "Downloading %s: %s to %s"
                 % (episode["podcast"]["title"], audio_url, filename)
             )
-            download_url(url=audio_url, path=download_path, description=audio_url)
+            download_file(url=audio_url, path=download_path)
 
             try:
                 if filecmp.cmp(download_path, old_download_path, shallow=False):
@@ -264,7 +241,7 @@ def download_episode(episode, download_dir):
             "Downloading %s: %s to %s"
             % (episode["podcast"]["title"], audio_url, filename)
         )
-        download_url(url=audio_url, path=download_path, description=audio_url)
+        download_file(url=audio_url, path=download_path)
 
     # Save a blob of JSON with some episode metadata
     episode["filename"] = filename
@@ -282,7 +259,7 @@ def save_rss_feed(*, episode, download_dir):
     _save_rss_feed(
         title=episode["podcast"]["title"],
         xml_url=episode["podcast"]["xml_url"],
-        download_dir=download_dir
+        download_dir=download_dir,
     )
 
 
@@ -297,17 +274,12 @@ def _save_rss_feed(*, title, xml_url, download_dir):
 
     if not os.path.exists(rss_path):
         print("Downloading RSS feed for %s" % title)
-        download_url(
-            url=xml_url,
-            path=rss_path,
-            description="RSS feed for %s" % title,
-        )
+        download_file(url=xml_url, path=rss_path)
 
     matching_feeds = sorted(glob.glob(os.path.join(podcast_dir, "feed.*.xml")))
 
-    while (
-        len(matching_feeds) >= 2 and
-        filecmp.cmp(matching_feeds[-2], matching_feeds[-1], shallow=False)
+    while len(matching_feeds) >= 2 and filecmp.cmp(
+        matching_feeds[-2], matching_feeds[-1], shallow=False
     ):
         os.unlink(matching_feeds[-1])
         matching_feeds.remove(matching_feeds[-1])

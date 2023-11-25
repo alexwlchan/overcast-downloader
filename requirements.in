@@ -1,0 +1,6 @@
+httpx
+lxml
+pip-tools
+smartypants
+tenacity
+urllib3
