@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8
 """
 Download podcast files based on your Overcast export.
 
