@@ -16,7 +16,7 @@ from lxml import etree
 import smartypants
 
 from download import download_file
-from download_overcast_podcasts import download_file, get_filename
+from download_overcast_podcasts import get_filename
 
 
 def download_files_for_xml(xml_path):
