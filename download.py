@@ -36,7 +36,7 @@ def download_file(*, url, path, client=None):
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
     if client is None:
-        client = httpx.Client()
+        client = httpx.Client(follow_redirects=True)
 
     try:
         with client.stream("GET", url) as resp:

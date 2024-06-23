@@ -15,18 +15,19 @@ import sys
 from lxml import etree
 import smartypants
 
-from download_overcast_podcasts import download_url, get_filename, logger
+from download import download_file
+from download_overcast_podcasts import download_file, get_filename
 
 
 def download_files_for_xml(xml_path):
-    logger.info("Inspecting %r", xml_path)
+    print("Inspecting %r" % xml_path)
     tree = etree.parse(xml_path)
 
     download_dir = os.path.dirname(xml_path)
 
     for item in tree.xpath(".//item"):
         title = item.find("title").text
-        logger.debug("Checking episode %r", title)
+        print("Checking episode %r" % title)
 
         audio_url = item.find("enclosure").attrib["url"]
 
@@ -39,12 +40,12 @@ def download_files_for_xml(xml_path):
         download_path = os.path.join(download_dir, filename)
 
         if os.path.exists(download_path):
-            logger.debug("This episode is already downloaded, skipping")
+            print("This episode is already downloaded, skipping")
             continue
 
-        logger.info("Downloading episode %r", title)
+        print("Downloading episode %r" % title)
 
-        download_url(url=audio_url, path=download_path, description="audio file")
+        download_file(url=audio_url, path=download_path)
 
 
 if __name__ == "__main__":
